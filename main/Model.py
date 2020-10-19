@@ -89,18 +89,15 @@ class QAModel(nn.Module):
             ResNet2D_deepths (int): deepth of ResNet2D blocks.
             ResNet1D_in (int): size of 1D features.
             ResNet1D_layer (int): number of ResNet1D layer.
-            device (string): the device tag.
     """
     def __init__(self, 
                  ResNet2D_in=21, ResNet2D_deepths=[2,3,3,2],  
-                 ResNet1D_in=51, ResNet1D_layer=8, 
-                 device='cpu',
+                 ResNet1D_in=52, ResNet1D_layer=8, 
                  *args, **kwargs):
 
         print(kwargs)
         
         super().__init__()
-        self.device = device
 
         # ResNet2D layers
         self.resnet2d = ResNet2D(ResNet2D_in, ResNet2D_deepths)
@@ -111,7 +108,7 @@ class QAModel(nn.Module):
         self.pool_col = torch.nn.AdaptiveAvgPool2d((1, None))
         
         # ResNet1D layers
-        resnet1d_group = self.resnet2d_out*2 + ResNet1D_in + 1
+        resnet1d_group = self.resnet2d_out*2 + ResNet1D_in
         self.resnet1d = nn.ModuleList([
             *[ResNet1DLayer(resnet1d_group, resnet1d_group, groups=resnet1d_group)
                 for _ in range(ResNet1D_layer)]
@@ -136,13 +133,9 @@ class QAModel(nn.Module):
         x_row = x_row.permute(0,1,3,2).reshape(x_row.size()[0], x_row.size()[1]*x_row.size()[3], x_row.size()[2])
         x_col = self.pool_col(x)
         x_col = x_col.reshape(x_col.size()[0], x_col.size()[1]*x_col.size()[2], x_col.size()[3])
-
-        # add rPosition
-        x_position = torch.linspace(0, 1, steps=x.size()[-1]).to(self.device).reshape((1, 1, -1)).repeat(x.size()[0], 1, 1)
-        x = torch.cat((x_row, x_col, x_position), dim=1)
         
         # Concatenates pooled pairwise features with sequencial features
-        x = torch.cat((x, x1), dim=1)
+        x = torch.cat((x_row, x_col, x1), dim=1)
 
         # ResNet1D
         for block in self.resnet1d: x = block(x)

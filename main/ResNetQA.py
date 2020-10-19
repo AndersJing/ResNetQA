@@ -21,7 +21,7 @@ class ModelDataset(Dataset):
         self.seq_feature = seq_feature
         self.dist_potential = dist_potential
         self.models_folder = models_folder
-        self.seq_feat_types = {'onehot': '1D', 'PSSM': '1D', 'SS3': '1D', 'ACC': '1D', 'ccmpredZ': '2D', 'alnstats': '2D', 'DistPot': '2D'}
+        self.seq_feat_types = {'onehot': '1D', 'rPos': '1D', 'PSSM': '1D', 'SS3': '1D', 'ACC': '1D', 'ccmpredZ': '2D', 'alnstats': '2D', 'DistPot': '2D'}
         self.struc_feat_types = {'SS3': '1D', 'RSA': '1D', 'CbCb': '2D', 'CaCa': '2D', 'NO': '2D'}
 
         self.models = []
@@ -37,6 +37,8 @@ class ModelDataset(Dataset):
 
         seq_feat = {
             'sequence': input_features['sequence'],
+            'onehot': Utils.get_seq_onehot(input_features['sequence']),
+            'rPos': Utils.get_rPos(len(input_features['sequence'])),
             'PSSM': input_features['PSSM'],
             'SS3': input_features['SS3'],
             'ACC': input_features['ACC'],
@@ -56,7 +58,7 @@ class ModelDataset(Dataset):
         seq_feat = self.__get_seq_feat()
         for _type in self.seq_feat_types:
             _shape = self.seq_feat_types[_type]
-            _data = Utils.get_seq_onehot(seq_feat['sequence']) if _type=='onehot' else seq_feat[_type]
+            _data = seq_feat[_type]
             if _shape=='2D': _data = _data.reshape((_data.shape[0], _data.shape[1], -1))
             feature[_shape] = _data if feature[_shape] is None else np.concatenate((feature[_shape], _data), axis=-1)
         
@@ -79,22 +81,32 @@ class ModelDataset(Dataset):
         return feature, model_info
 
 class ResNetQA:
-    def __init__(self, device_id, params_file):
+    def __init__(self, device_id, quality_type):
         """
         Args:
             device_id (int): 0: GPU, -1: CPU.
+            quality_type (str): {'GDTTS', 'GDTTS_Ranking', 'lDDT', 'lDDT_Ranking'}.
         """
         self.device = torch.device('cuda:%s'%(device_id)) if device_id>=0 else torch.device('cpu')
+        self.quality_type = quality_type
         if device_id>=0: torch.cuda.set_device(device_id)
-        self.model = QAModel(device=self.device).to(self.device)
+        print("Using device: %s, quality_type: %s."%(self.device, quality_type))
+        self.model = QAModel().to(self.device)
+        params_file = {
+            'GDTTS':         'model_params/GDTTS.pkl',
+            'GDTTS_Ranking': 'model_params/GDTTS_Ranking.pkl',
+            'lDDT':          'model_params/lDDT.pkl',
+            'lDDT_Ranking':  'model_params/lDDT_Ranking.pkl',            
+        }[quality_type]
         self.model.load_state_dict(torch.load(params_file))
 
     def get_prediction(self, x):
         pred_global, pred_local = self.model(x['1D'].float().to(self.device), x['2D'].float().to(self.device))
         pred_global, pred_local = pred_global.squeeze(1).cpu().numpy(), pred_local.squeeze(2).cpu().numpy()
-        # convert local prediction to distance error
-        pred_local[pred_local<0.001] = 0.001 # control the max value
-        pred_local = np.sqrt(1/pred_local-1)*3.8
+        if self.quality_type.find('GDTTS')>-1:
+            # convert local prediction to distance error
+            pred_local[pred_local<0.001] = 0.001 # control the max value
+            pred_local = np.sqrt(1/pred_local-1)*3.8
         return pred_global, pred_local
 
     def predict(self, data_dl):
@@ -107,7 +119,7 @@ class ResNetQA:
                 for i, model in enumerate(model_info['model']):
                     QA_results[model] = {
                         'global': np.around(pred_global[i], decimals=4),
-                        'local': np.around(pred_local[i], decimals=2),
+                        'local': np.around(pred_local[i], decimals=4),
                     }
                                         
         return QA_results
@@ -118,7 +130,10 @@ def get_args():
     parser.add_argument("dist_potential", type=str, help="distance potential file.")
     parser.add_argument("models_folder", type=str, help="folder of decoy models.")
     parser.add_argument("output_file", type=str, help="output file.")
-    
+    parser.add_argument('quality_type', default='GDTTS', const='GDTTS', nargs='?', 
+                            choices=['GDTTS', 'GDTTS_Ranking', 'lDDT', 'lDDT_Ranking'], 
+                            help="quality type. GDTTS_Ranking and lDDT_Ranking are trained by an extra ranking loss to yield better ranking performances for global quality assessment.")
+
     parser.add_argument('-device_id', type=int, required=False, dest='device_id', default=-1, help='the device index to use (CPU: -1, GPU: 0,1,2,...).')
     parser.add_argument('-n_worker', type=int, required=False, dest='n_worker', default=0, help='worker num to load data.')
     parser.add_argument('-n_batch', type=int, required=False, dest='n_batch', default=1, help='minibatch size.')
@@ -134,7 +149,7 @@ if __name__ == "__main__":
     model_dl = DataLoader(dataset, num_workers=args.n_worker, batch_size=args.n_batch, pin_memory=True)
 
     # Initialize
-    resNetQA = ResNetQA(args.device_id, "model_params.pkl")
+    resNetQA = ResNetQA(args.device_id, args.quality_type)
 
     # predict
     QA_results = resNetQA.predict(model_dl)

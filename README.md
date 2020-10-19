@@ -49,12 +49,18 @@ tar -zxvf T0955.stage1.3D.srv.tar.gz
 $ python ResNetQA.py -h
 usage: ResNetQA.py [-h] [-device_id DEVICE_ID] [-n_worker N_WORKER] [-n_batch N_BATCH]
                    seq_feature dist_potential models_folder output_file
+                   [{GDTTS,GDTTS_Ranking,lDDT,lDDT_Ranking}]
 
 positional arguments:
   seq_feature           sequence feature file.
   dist_potential        distance potential file.
   models_folder         folder of decoy models.
   output_file           output file.
+  {GDTTS,GDTTS_Ranking,lDDT,lDDT_Ranking}
+                        quality type. GDTTS_Ranking and lDDT_Ranking are
+                        trained by an extra ranking loss to yield better
+                        ranking performance for global quality assessment.
+                        (default: GDTTS)
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -63,12 +69,14 @@ optional arguments:
   -n_batch N_BATCH      minibatch size. (default: 1)
 ```
 
+ResNetQA can output four quality estimations for different quality metrics: GDTTS, GDTTS_Ranking, lDDT, lDDT_Ranking. For GDTTS and GDTTS_Ranking, the local quality estimation is based on the distance deviation of each residue's C-alpha atom and the global quality estimation is based on the GDTTS. For lDDT and lDDT_Ranking, both the local and global quality estimations are based on the lDDT. GDTTS_Ranking and lDDT_Ranking are trained by an extra ranking loss to yield better ranking performances for global quality assessment, so if you pay more attention to the model ranking, it would be better to use GDTTS_Ranking or lDDT_Ranking, if you pay more attention to the absolute value, it would be better to use GDTTS or lDDT.
+
 Suppose you save the model files of T0955 under `examples/T0955/`, you can run the following command to get QA results.
 
 ```
 cd ResNetQA/main/
 
-python ResNetQA.py ../examples/T0955.inputFeatures.pkl ../examples/T0955.distPotential.DFIRE16.pkl ../examples/T0955/ ../examples/T0955.QA.pkl
+python ResNetQA.py ../examples/T0955.inputFeatures.pkl ../examples/T0955.distPotential.DFIRE16.pkl ../examples/T0955/ ../examples/T0955.QA.pkl GDTTS
 ```
 
 The result will be saved at `examples/T0955.QA.pkl`.

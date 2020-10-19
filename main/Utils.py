@@ -53,7 +53,6 @@ def get_struc_feat(seq_len, model_file):
     
     # distance map
     atom_pairs=['CaCa', 'CbCb', 'NO']
-    dist_matrix = dict()
     for atom_pair in atom_pairs:
         atom1, atom2 = atom_pair[:int(len(atom_pair)/2)].upper(), atom_pair[int(len(atom_pair)/2):].upper()
         X = [ list(c[atom1]) if (c is not None and c[atom1] is not None) else [0,0,0] for c in coordinates ]
@@ -75,3 +74,7 @@ def get_seq_onehot(seq):
         if res not in RESIDUE_TYPES: res = "X"
         seq_onehot[i, RESIDUE_TYPES.index(res)] = 1
     return seq_onehot
+
+def get_rPos(seq_len):
+    r_pos = np.linspace(0, 1, num=seq_len).reshape(seq_len, -1)
+    return r_pos
