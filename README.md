@@ -84,8 +84,7 @@ The result will be saved at `examples/T0955.QA.pkl`.
 Examples of the feature and result files for T0967 and T0980s2 can also be found in the folder `examples/`.
 
 ## Reference
-
-Xiaoyang Jing, Jinbo Xu. Improved protein model quality assessment by integrating sequential and pairwise features using deep learning. 2020, Submitted.
+Xiaoyang Jing, Jinbo Xu, Improved Protein Model Quality Assessment By Integrating Sequential And Pairwise Features Using Deep Learning, Bioinformatics, , btaa1037, https://doi-org.proxy.uchicago.edu/10.1093/bioinformatics/btaa1037
 
 
 ## Contact
