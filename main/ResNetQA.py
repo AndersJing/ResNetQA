@@ -89,8 +89,6 @@ class ResNetQA:
         """
         self.device = torch.device('cuda:%s'%(device_id)) if device_id>=0 else torch.device('cpu')
         self.quality_type = quality_type
-        if device_id>=0: torch.cuda.set_device(device_id)
-        print("Using device: %s, quality_type: %s."%(self.device, quality_type))
         self.model = QAModel().to(self.device)
         params_file = {
             'GDTTS':         'model_params/GDTTS.pkl',
@@ -143,7 +141,13 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
+    print("Using device: %s, quality_type: %s."%(args.device_id, args.quality_type))
 
+    # set the CUDA_VISIBLE_DEVICES
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device_id)
+    if args.device_id>=0: args.device_id = 0
+    
     # dataset
     dataset = ModelDataset(args.seq_feature, args.dist_potential, args.models_folder)
     model_dl = DataLoader(dataset, num_workers=args.n_worker, batch_size=args.n_batch, pin_memory=True)
