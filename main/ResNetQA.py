@@ -10,6 +10,8 @@ from torch.utils.data import Dataset, DataLoader
 from Model import QAModel
 import Utils as Utils
 
+__MYPATH__ = os.path.split(os.path.realpath(__file__))[0] + '/'
+
 class ModelDataset(Dataset):
     def __init__(self, seq_feature, dist_potential, models_folder):
         """
@@ -96,7 +98,7 @@ class ResNetQA:
             'lDDT':          'model_params/lDDT.pkl',
             'lDDT_Ranking':  'model_params/lDDT_Ranking.pkl',            
         }[quality_type]
-        self.model.load_state_dict(torch.load(params_file))
+        self.model.load_state_dict(torch.load(__MYPATH__+params_file))
 
     def get_prediction(self, x):
         pred_global, pred_local = self.model(x['1D'].float().to(self.device), x['2D'].float().to(self.device))
@@ -133,7 +135,7 @@ def get_args():
                             help="quality type. GDTTS_Ranking and lDDT_Ranking are trained by an extra ranking loss to yield better ranking performances for global quality assessment.")
 
     parser.add_argument('-device_id', type=int, required=False, dest='device_id', default=-1, help='the device index to use (CPU: -1, GPU: 0,1,2,...).')
-    parser.add_argument('-n_worker', type=int, required=False, dest='n_worker', default=0, help='worker num to load data.')
+    parser.add_argument('-n_worker', type=int, required=False, dest='n_worker', default=1, help='worker num to load data.')
     parser.add_argument('-n_batch', type=int, required=False, dest='n_batch', default=1, help='minibatch size.')
 
     args = parser.parse_args()
@@ -147,6 +149,8 @@ if __name__ == "__main__":
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device_id)
     if args.device_id>=0: args.device_id = 0
+    
+    torch.set_num_threads(args.n_worker)
     
     # dataset
     dataset = ModelDataset(args.seq_feature, args.dist_potential, args.models_folder)
