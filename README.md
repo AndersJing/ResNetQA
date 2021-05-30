@@ -83,6 +83,9 @@ The result will be saved at `examples/T0955.QA.pkl`.
 
 Examples of the feature and result files for T0967 and T0980s2 can also be found in the folder `examples/`.
 
+## Quality estimations of CASP12 and CASP13 decoys
+The quality estimations of CASP12 and CASP13 stage2 decoys by different ResNetQA variants can be found in the folder `data/`, in which you may also find the script to evaluate those estimations.
+
 ## Reference
 Xiaoyang Jing, Jinbo Xu, Improved Protein Model Quality Assessment By Integrating Sequential And Pairwise Features Using Deep Learning, Bioinformatics, , btaa1037, https://doi.org/10.1093/bioinformatics/btaa1037
 
